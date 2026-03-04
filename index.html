@@ -228,206 +228,188 @@
   </div>
   <script>
     (() => {
-      const staticCanvas = document.getElementById('static');
-      const dynamicCanvas = document.getElementById('dynamic');
-      const clockFaceArea = document.getElementById('clock-face-area');
-      const digitalClock = document.getElementById('digital-clock');
-      const timeDisplay = document.getElementById('time-display');
-      const ampmDisplay = document.getElementById('ampm-display');
-      const clubLogo = document.getElementById('club-logo');
-      const councilLogo = document.getElementById('council-logo');
-      const sCtx = staticCanvas.getContext('2d');
-      const dCtx = dynamicCanvas.getContext('2d');
+      var staticCanvas = document.getElementById('static');
+var dynamicCanvas = document.getElementById('dynamic');
+var clockFaceArea = document.getElementById('clock-face-area');
+var digitalClock = document.getElementById('digital-clock');
+var timeDisplay = document.getElementById('time-display');
+var ampmDisplay = document.getElementById('ampm-display');
+var clubLogo = document.getElementById('club-logo');
+var councilLogo = document.getElementById('council-logo');
+var sCtx = staticCanvas.getContext('2d');
+var dCtx = dynamicCanvas.getContext('2d');
 
-      // cached layout values
-      let cw, ch, gap, r, cx, cy;
+// cached layout values
+var cw, ch, r, cx, cy;
 
-      function pad2(n) { return n.toString().padStart(2, '0'); }
+function pad2(n) {
+  return n < 10 ? '0' + n : String(n);
+}
 
-      // tapered hand helper (defined once, not per frame)
-      function drawHand(ctx, centerX, centerY, angle, len, baseW, tipW, color) {
-        ctx.fillStyle = color;
-        const perp = angle + Math.PI / 2;
-        const cosA = Math.cos(angle), sinA = Math.sin(angle);
-        const cosP = Math.cos(perp), sinP = Math.sin(perp);
-        const tipX = centerX + cosA * len;
-        const tipY = centerY + sinA * len;
-        ctx.beginPath();
-        ctx.moveTo(centerX + cosP * baseW, centerY + sinP * baseW);
-        ctx.lineTo(centerX - cosP * baseW, centerY - sinP * baseW);
-        ctx.lineTo(tipX - cosP * tipW, tipY - sinP * tipW);
-        ctx.lineTo(tipX + cosP * tipW, tipY + sinP * tipW);
-        ctx.closePath();
-        ctx.fill();
-      }
+// tapered hand helper
+function drawHand(ctx, centerX, centerY, angle, len, baseW, tipW, color) {
+  ctx.fillStyle = color;
 
-      function buildStatic() {
-        const dpr = Math.max(1, Math.floor(window.devicePixelRatio || 1));
-        const w = Math.floor(clockFaceArea.clientWidth * dpr);
-        const h = Math.floor(clockFaceArea.clientHeight * dpr);
+  var perp = angle + Math.PI / 2;
+  var cosA = Math.cos(angle);
+  var sinA = Math.sin(angle);
+  var cosP = Math.cos(perp);
+  var sinP = Math.sin(perp);
 
-        staticCanvas.width = w;
-        staticCanvas.height = h;
-        dynamicCanvas.width = w;
-        dynamicCanvas.height = h;
-        cw = w; ch = h;
+  var tipX = centerX + cosA * len;
+  var tipY = centerY + sinA * len;
 
-        const logoGap = Math.min(w, h) * 0.03;
+  ctx.beginPath();
+  ctx.moveTo(centerX + cosP * baseW, centerY + sinP * baseW);
+  ctx.lineTo(centerX - cosP * baseW, centerY - sinP * baseW);
+  ctx.lineTo(tipX - cosP * tipW, tipY - sinP * tipW);
+  ctx.lineTo(tipX + cosP * tipW, tipY + sinP * tipW);
+  ctx.closePath();
+  ctx.fill();
+}
 
-        // Fill the canvas (with a tiny margin for ring thickness safety)
-        r = (Math.min(w, h) / 2) * 0.98;
-        cx = w / 2;
-        cy = h / 2;
+function buildStatic() {
+  var dpr = Math.max(1, Math.floor(window.devicePixelRatio || 1));
+  var w = Math.floor(clockFaceArea.clientWidth * dpr);
+  var h = Math.floor(clockFaceArea.clientHeight * dpr);
 
-        // Sync digital clock text size
-        const textH = Math.min(window.innerWidth, window.innerHeight) * 0.15;
-        digitalClock.style.fontSize = `${Math.floor(textH * 0.85)}px`;
+  staticCanvas.width = w;
+  staticCanvas.height = h;
+  dynamicCanvas.width = w;
+  dynamicCanvas.height = h;
 
-        // draw static elements (only redrawn on resize)
-        sCtx.clearRect(0, 0, w, h);
+  cw = w;
+  ch = h;
 
-        // clock face
-        sCtx.fillStyle = '#F0F3F5';
-        sCtx.beginPath();
-        sCtx.arc(cx, cy, r, 0, Math.PI * 2);
-        sCtx.fill();
+  r = (Math.min(w, h) / 2) * 0.98;
+  cx = w / 2;
+  cy = h / 2;
 
-        // ring
-        sCtx.lineWidth = r * 0.03;
-        sCtx.strokeStyle = '#222';
-        sCtx.beginPath();
-        sCtx.arc(cx, cy, r, 0, Math.PI * 2);
-        sCtx.stroke();
+  var textH = Math.min(window.innerWidth, window.innerHeight) * 0.15;
+  digitalClock.style.fontSize = Math.floor(textH * 0.85) + 'px';
 
-        // ticks
-        for (let i = 0; i < 60; i++) {
-          const major = (i % 5 === 0);
-          const a = (i / 60) * Math.PI * 2 - Math.PI / 2;
-          const cosA = Math.cos(a), sinA = Math.sin(a);
-          if (major) {
-            const inner = r * 0.86;
-            const outer = r * 1.0;
-            const spread = r * 0.02;
-            const cosP = Math.cos(a + Math.PI / 2), sinP = Math.sin(a + Math.PI / 2);
-            sCtx.fillStyle = '#222';
-            sCtx.beginPath();
-            sCtx.moveTo(cx + cosA * inner, cy + sinA * inner);
-            sCtx.lineTo(cx + cosA * outer + cosP * spread, cy + sinA * outer + sinP * spread);
-            sCtx.lineTo(cx + cosA * outer - cosP * spread, cy + sinA * outer - sinP * spread);
-            sCtx.closePath();
-            sCtx.fill();
-          } else {
-            const inner = r * 0.90;
-            const outer = r * 0.98;
-            sCtx.lineWidth = r * 0.008;
-            sCtx.strokeStyle = '#999';
-            sCtx.beginPath();
-            sCtx.moveTo(cx + cosA * inner, cy + sinA * inner);
-            sCtx.lineTo(cx + cosA * outer, cy + sinA * outer);
-            sCtx.stroke();
-          }
-        }
+  sCtx.clearRect(0, 0, w, h);
 
-        // tick labels
-        sCtx.fillStyle = '#222';
-        sCtx.font = `${Math.floor(r * 0.20)}px monospace`;
-        sCtx.textAlign = 'center';
-        sCtx.textBaseline = 'middle';
-        for (let i = 1; i <= 12; i++) {
-          const sec = i * 5;
-          const a = (sec / 60) * Math.PI * 2 - Math.PI / 2;
-          const labelR = r * 0.74;
-          sCtx.fillText(sec.toString(), cx + Math.cos(a) * labelR, cy + Math.sin(a) * labelR);
-        }
+  // clock face
+  sCtx.fillStyle = '#F0F3F5';
+  sCtx.beginPath();
+  sCtx.arc(cx, cy, r, 0, Math.PI * 2);
+  sCtx.fill();
 
-        // --- Dynamic Logo Scaling & Positioning ---
-        // Since the canvas is now essentially the clock face bounding box,
-        // we need to consider the container's absolute screen position for logo collision.
-        const rect = clockFaceArea.getBoundingClientRect();
-        const d_cx = (rect.left + rect.width / 2);
-        const d_cy = (rect.top + rect.height / 2);
-        const d_r = r / dpr;
-        const d_logoGap = (Math.min(window.innerWidth, window.innerHeight) * 0.03);
+  // ring
+  sCtx.lineWidth = r * 0.03;
+  sCtx.strokeStyle = '#222';
+  sCtx.beginPath();
+  sCtx.arc(cx, cy, r, 0, Math.PI * 2);
+  sCtx.stroke();
 
-        // Club Logo (Top-Left)
-        const x0 = d_logoGap, y0 = d_logoGap;
-        const aspect1 = 758.68 / 488.28;
-        let minH1 = 0, maxH1 = Math.min(window.innerHeight * 0.5, d_cy);
-        for (let i = 0; i < 20; i++) {
-          let testH = (minH1 + maxH1) / 2, testW = testH * aspect1;
-          if (testW > window.innerWidth * 0.5) { maxH1 = testH; continue; }
-          let dist = Math.sqrt(Math.pow((x0 + testW) - d_cx, 2) + Math.pow((y0 + testH) - d_cy, 2));
-          if (dist < d_r + d_logoGap) maxH1 = testH; else minH1 = testH;
-        }
-        clubLogo.style.top = `${y0}px`;
-        clubLogo.style.left = `${x0}px`;
-        clubLogo.style.width = `${minH1 * aspect1}px`;
-        clubLogo.style.height = `${minH1}px`;
+  // ticks
+  for (var i = 0; i < 60; i++) {
+    var major = (i % 5 === 0);
+    var a = (i / 60) * Math.PI * 2 - Math.PI / 2;
+    var cosA = Math.cos(a);
+    var sinA = Math.sin(a);
 
-        // Council Logo (Top-Right)
-        const aspect2 = 240 / 99.637;
-        let minH2 = 0, maxH2 = Math.min(window.innerHeight * 0.5, d_cy);
-        for (let i = 0; i < 20; i++) {
-          let testH = (minH2 + maxH2) / 2, testW = testH * aspect2;
-          if (testW > window.innerWidth * 0.5) { maxH2 = testH; continue; }
-          // Symmetrical logic: check distance from (window.innerWidth - logoGap - testW)
-          let testX = window.innerWidth - d_logoGap - testW;
-          let dist = Math.sqrt(Math.pow(testX - d_cx, 2) + Math.pow((y0 + testH) - d_cy, 2));
-          if (dist < d_r + d_logoGap) maxH2 = testH; else minH2 = testH;
-        }
-        councilLogo.style.top = `${y0}px`;
-        councilLogo.style.right = `${d_logoGap}px`;
-        councilLogo.style.width = `${minH2 * aspect2}px`;
-        councilLogo.style.height = `${minH2}px`;
-      }
+    if (major) {
+      var inner = r * 0.86;
+      var outer = r * 1.0;
+      var spread = r * 0.02;
+      var cosP = Math.cos(a + Math.PI / 2);
+      var sinP = Math.sin(a + Math.PI / 2);
 
-      // throttle to ~30fps for low-spec hardware
-      let lastFrame = 0;
-      const FRAME_INTERVAL = 1000 / 30;
+      sCtx.fillStyle = '#222';
+      sCtx.beginPath();
+      sCtx.moveTo(cx + cosA * inner, cy + sinA * inner);
+      sCtx.lineTo(cx + cosA * outer + cosP * spread, cy + sinA * outer + sinP * spread);
+      sCtx.lineTo(cx + cosA * outer - cosP * spread, cy + sinA * outer - sinP * spread);
+      sCtx.closePath();
+      sCtx.fill();
+    } else {
+      var innerMinor = r * 0.90;
+      var outerMinor = r * 0.98;
+      sCtx.lineWidth = r * 0.008;
+      sCtx.strokeStyle = '#999';
+      sCtx.beginPath();
+      sCtx.moveTo(cx + cosA * innerMinor, cy + sinA * innerMinor);
+      sCtx.lineTo(cx + cosA * outerMinor, cy + sinA * outerMinor);
+      sCtx.stroke();
+    }
+  }
 
-      function draw(timestamp) {
-        requestAnimationFrame(draw);
-        if (timestamp - lastFrame < FRAME_INTERVAL) return;
-        lastFrame = timestamp;
+  // labels
+  sCtx.fillStyle = '#222';
+  sCtx.font = Math.floor(r * 0.20) + 'px monospace';
+  sCtx.textAlign = 'center';
+  sCtx.textBaseline = 'middle';
 
-        // clear only the dynamic layer
-        dCtx.clearRect(0, 0, cw, ch);
+  for (var j = 1; j <= 12; j++) {
+    var sec = j * 5;
+    var angle = (sec / 60) * Math.PI * 2 - Math.PI / 2;
+    var labelR = r * 0.74;
+    sCtx.fillText(String(sec),
+      cx + Math.cos(angle) * labelR,
+      cy + Math.sin(angle) * labelR
+    );
+  }
+}
 
-        // hands
-        const now = new Date();
-        const seconds = (now.getTime() / 1000) % 60;
-        const base = (seconds / 60) * Math.PI * 2 - Math.PI / 2;
+// throttle ~30fps
+var lastFrame = 0;
+var FRAME_INTERVAL = 1000 / 30;
 
-        const handLen = r * 0.90;
-        const baseW = r * 0.045;
-        const tipW = r * 0.02;
-        drawHand(dCtx, cx, cy, base, handLen, baseW, tipW, '#E53935');  // red
-        drawHand(dCtx, cx, cy, base + Math.PI / 2, handLen, baseW, tipW, '#43A047');  // green
-        drawHand(dCtx, cx, cy, base + Math.PI, handLen, baseW, tipW, '#1E88E5');  // blue
-        drawHand(dCtx, cx, cy, base + 3 * Math.PI / 2, handLen, baseW, tipW, '#E6D030');  // yellow
+function draw(timestamp) {
+  requestAnimationFrame(draw);
 
-        // center dot
-        dCtx.fillStyle = '#00d4e5';
-        dCtx.beginPath();
-        dCtx.arc(cx, cy, r * 0.06, 0, Math.PI * 2);
-        dCtx.fill();
+  if (timestamp - lastFrame < FRAME_INTERVAL) return;
+  lastFrame = timestamp;
 
-        // digital clock (12-hour) - update DOM
-        const hours24 = now.getHours();
-        const ampm = hours24 >= 12 ? 'PM' : 'AM';
-        const hh = hours24 % 12 || 12;
-        timeDisplay.textContent = `${hh}:${pad2(now.getMinutes())}:${pad2(now.getSeconds())}`;
-        ampmDisplay.textContent = ampm;
-      }
+  dCtx.clearRect(0, 0, cw, ch);
 
-      // Use ResizeObserver for robust layout handling
-      const ro = new ResizeObserver(() => buildStatic());
-      ro.observe(clockFaceArea);
+  var now = new Date();
+  var seconds = (now.getTime() / 1000) % 60;
+  var base = (seconds / 60) * Math.PI * 2 - Math.PI / 2;
 
-      if (clubLogo.complete) buildStatic(); else clubLogo.onload = () => buildStatic();
+  var handLen = r * 0.90;
+  var baseW = r * 0.045;
+  var tipW = r * 0.02;
 
-      // Start the animation loop
-      requestAnimationFrame(draw);
+  drawHand(dCtx, cx, cy, base, handLen, baseW, tipW, '#E53935');
+  drawHand(dCtx, cx, cy, base + Math.PI / 2, handLen, baseW, tipW, '#43A047');
+  drawHand(dCtx, cx, cy, base + Math.PI, handLen, baseW, tipW, '#1E88E5');
+  drawHand(dCtx, cx, cy, base + 3 * Math.PI / 2, handLen, baseW, tipW, '#E6D030');
+
+  // center dot
+  dCtx.fillStyle = '#00d4e5';
+  dCtx.beginPath();
+  dCtx.arc(cx, cy, r * 0.06, 0, Math.PI * 2);
+  dCtx.fill();
+
+  // digital clock
+  var hours24 = now.getHours();
+  var ampm = hours24 >= 12 ? 'PM' : 'AM';
+  var hh = hours24 % 12;
+  if (hh === 0) hh = 12;
+
+  timeDisplay.textContent =
+    hh + ':' +
+    pad2(now.getMinutes()) + ':' +
+    pad2(now.getSeconds());
+
+  ampmDisplay.textContent = ampm;
+}
+
+// Resize fallback instead of ResizeObserver
+window.addEventListener('resize', buildStatic);
+
+// Wait for logo load
+if (clubLogo.complete) {
+  buildStatic();
+} else {
+  clubLogo.onload = buildStatic;
+}
+
+// Start animation
+requestAnimationFrame(draw);
     })();
   </script>
 </body>

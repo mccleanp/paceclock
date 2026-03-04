@@ -1,323 +1,148 @@
 <!doctype html>
 <html>
-
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, user-scalable=no" />
-  <title>Pace Clock</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>Pace Clock - Simple Face</title>
   <style>
-    html,
-    body {
+    html, body {
       margin: 0;
-      height: 100%;
+      padding: 0;
       background: #0a1628;
       overflow: hidden;
-    }
-
-    body {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-      gap: 0;
-      padding: 0;
-    }
-
-    #clock-face-area {
-      position: relative;
-      aspect-ratio: 1 / 1;
-      flex: 1 1 0;
-      width: auto;
-      margin-top: 2%;
-      min-height: 0;
-      min-width: 0;
-      max-width: 100vw;
-      max-height: 100%;
-    }
-
-    #clock-face-area canvas {
-      position: absolute;
-      top: 0;
-      left: 0;
       width: 100%;
       height: 100%;
     }
-
-    #digital-clock {
-      display: flex;
-      width: 100vw;
-      align-items: baseline;
-      color: #c0c8d0;
-      font-family: monospace;
-      font-weight: normal;
-    }
-
-    .clock-spacer {
-      flex: 1;
-      display: flex;
-    }
-
-    #left-spacer {
-      justify-content: flex-end;
-    }
-
-    #right-spacer {
-      justify-content: flex-start;
-    }
-
-    #time-display {
-      white-space: pre;
-    }
-
-    #ampm-display {
-      font-size: 0.7em;
-      margin-left: 0.4em;
-      opacity: 0.8;
-      white-space: nowrap;
-    }
-
-    #club-logo,
-    #council-logo {
+    #c {
       position: absolute;
-      z-index: 10;
-      opacity: 0.9;
-    }
-
-    #club-logo {
-      top: 0;
       left: 0;
-    }
-
-    #council-logo {
       top: 0;
-      right: 0;
+      width: 100vw;
+      height: 100vh;
     }
   </style>
 </head>
 
 <body>
-  <div id="clock-face-area">
-    <canvas id="static" width="851" height="851" style="width: 851px; height: 851px;"></canvas>
-    <canvas id="dynamic" width="851" height="851" style="width: 851px; height: 851px;"></canvas>
-  </div>
-  <div id="digital-clock">
-    <div id="left-spacer" class="clock-spacer"></div>
-    <span id="time-display"> </span>
-    <div id="right-spacer" class="clock-spacer">
-      <span id="ampm-display"></span>
-    </div>
-  </div>
-<script>
-(function () {
-  // --- elements
-  var staticCanvas = document.getElementById('static');
-  var dynamicCanvas = document.getElementById('dynamic');
-  var clockFaceArea = document.getElementById('clock-face-area');
-  var digitalClock = document.getElementById('digital-clock');
-  var timeDisplay = document.getElementById('time-display');
-  var ampmDisplay = document.getElementById('ampm-display');
+  <canvas id="c"></canvas>
 
-  var sCtx = staticCanvas.getContext('2d');
-  var dCtx = dynamicCanvas.getContext('2d');
+  <script>
+  (function () {
+    var canvas = document.getElementById('c');
+    var ctx = canvas.getContext('2d');
 
-  // cached layout (CSS pixel space)
-  var cw = 0, ch = 0, r = 0, cx = 0, cy = 0, dpr = 1;
+    var cssW = 0, cssH = 0, dpr = 1;
 
-  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+    function resize(force) {
+      var w = document.documentElement.clientWidth || window.innerWidth || 0;
+      var h = document.documentElement.clientHeight || window.innerHeight || 0;
+      var ndpr = window.devicePixelRatio || 1;
 
-  // tapered hand helper
-  function drawHand(ctx, centerX, centerY, angle, len, baseW, tipW, color) {
-    ctx.fillStyle = color;
-    var perp = angle + Math.PI / 2;
-    var cosA = Math.cos(angle), sinA = Math.sin(angle);
-    var cosP = Math.cos(perp), sinP = Math.sin(perp);
-    var tipX = centerX + cosA * len;
-    var tipY = centerY + sinA * len;
+      if (!w || !h) return false;
+      if (!force && w === cssW && h === cssH && ndpr === dpr) return true;
 
-    ctx.beginPath();
-    ctx.moveTo(centerX + cosP * baseW, centerY + sinP * baseW);
-    ctx.lineTo(centerX - cosP * baseW, centerY - sinP * baseW);
-    ctx.lineTo(tipX - cosP * tipW, tipY - sinP * tipW);
-    ctx.lineTo(tipX + cosP * tipW, tipY + sinP * tipW);
-    ctx.closePath();
-    ctx.fill();
-  }
+      cssW = w; cssH = h; dpr = ndpr;
 
-  function resizeCanvases(cssW, cssH) {
-    dpr = window.devicePixelRatio || 1;
+      canvas.style.width = cssW + 'px';
+      canvas.style.height = cssH + 'px';
+      canvas.width = Math.floor(cssW * dpr);
+      canvas.height = Math.floor(cssH * dpr);
 
-    // CSS size (already 100% in your CSS, but set explicitly for robustness)
-    staticCanvas.style.width = cssW + 'px';
-    staticCanvas.style.height = cssH + 'px';
-    dynamicCanvas.style.width = cssW + 'px';
-    dynamicCanvas.style.height = cssH + 'px';
+      // draw in CSS pixels
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      return true;
+    }
 
-    // backing buffer size
-    staticCanvas.width = Math.floor(cssW * dpr);
-    staticCanvas.height = Math.floor(cssH * dpr);
-    dynamicCanvas.width = Math.floor(cssW * dpr);
-    dynamicCanvas.height = Math.floor(cssH * dpr);
+    function drawFace() {
+      // Ensure we have a good size
+      if (!resize(false)) return;
 
-    // draw in CSS pixels
-    sCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    dCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  }
+      var w = cssW, h = cssH;
+      var r = Math.min(w, h) * 0.45;
+      var cx = w / 2;
+      var cy = h / 2;
 
-  function buildStatic(force) {
-    // Measure AFTER layout settles
-    var cssW = clockFaceArea.clientWidth;
-    var cssH = clockFaceArea.clientHeight;
+      // background
+      ctx.clearRect(0, 0, w, h);
 
-    // Some embedded browsers report 0x0 briefly
-    if (!cssW || !cssH) return false;
+      // face
+      ctx.fillStyle = '#F0F3F5';
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
 
-    // Only rebuild if changed (unless forced)
-    if (!force && cssW === cw && cssH === ch) return true;
+      // outer ring
+      ctx.strokeStyle = '#222';
+      ctx.lineWidth = r * 0.03;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.stroke();
 
-    cw = cssW;
-    ch = cssH;
+      // ticks
+      for (var i = 0; i < 60; i++) {
+        var a = (i / 60) * Math.PI * 2 - Math.PI / 2;
+        var cosA = Math.cos(a), sinA = Math.sin(a);
 
-    resizeCanvases(cw, ch);
+        if (i % 5 === 0) {
+          // major tick (thicker)
+          var inner = r * 0.82;
+          var outer = r * 0.98;
 
-    // Geometry in CSS pixels
-    r = (Math.min(cw, ch) / 2) * 0.98;
-    cx = cw / 2;
-    cy = ch / 2;
+          ctx.strokeStyle = '#222';
+          ctx.lineWidth = r * 0.02;
+          ctx.beginPath();
+          ctx.moveTo(cx + cosA * inner, cy + sinA * inner);
+          ctx.lineTo(cx + cosA * outer, cy + sinA * outer);
+          ctx.stroke();
+        } else {
+          // minor tick
+          var inner2 = r * 0.90;
+          var outer2 = r * 0.98;
 
-    // Sync digital clock text size
-    var textH = Math.min(window.innerWidth || cw, window.innerHeight || ch) * 0.15;
-    digitalClock.style.fontSize = Math.floor(textH * 0.85) + 'px';
-
-    // Draw static layer in CSS pixels (because transform maps to device pixels)
-    sCtx.clearRect(0, 0, cw, ch);
-
-    // face
-    sCtx.fillStyle = '#F0F3F5';
-    sCtx.beginPath();
-    sCtx.arc(cx, cy, r, 0, Math.PI * 2);
-    sCtx.fill();
-
-    // ring
-    sCtx.lineWidth = r * 0.03;
-    sCtx.strokeStyle = '#222';
-    sCtx.beginPath();
-    sCtx.arc(cx, cy, r, 0, Math.PI * 2);
-    sCtx.stroke();
-
-    // ticks
-    for (var i = 0; i < 60; i++) {
-      var major = (i % 5 === 0);
-      var a = (i / 60) * Math.PI * 2 - Math.PI / 2;
-      var cosA = Math.cos(a), sinA = Math.sin(a);
-
-      if (major) {
-        var inner = r * 0.86;
-        var outer = r * 1.0;
-        var spread = r * 0.02;
-        var cosP = Math.cos(a + Math.PI / 2), sinP = Math.sin(a + Math.PI / 2);
-
-        sCtx.fillStyle = '#222';
-        sCtx.beginPath();
-        sCtx.moveTo(cx + cosA * inner, cy + sinA * inner);
-        sCtx.lineTo(cx + cosA * outer + cosP * spread, cy + sinA * outer + sinP * spread);
-        sCtx.lineTo(cx + cosA * outer - cosP * spread, cy + sinA * outer - sinP * spread);
-        sCtx.closePath();
-        sCtx.fill();
-      } else {
-        var inner2 = r * 0.90;
-        var outer2 = r * 0.98;
-
-        sCtx.lineWidth = r * 0.008;
-        sCtx.strokeStyle = '#999';
-        sCtx.beginPath();
-        sCtx.moveTo(cx + cosA * inner2, cy + sinA * inner2);
-        sCtx.lineTo(cx + cosA * outer2, cy + sinA * outer2);
-        sCtx.stroke();
+          ctx.strokeStyle = '#888';
+          ctx.lineWidth = r * 0.008;
+          ctx.beginPath();
+          ctx.moveTo(cx + cosA * inner2, cy + sinA * inner2);
+          ctx.lineTo(cx + cosA * outer2, cy + sinA * outer2);
+          ctx.stroke();
+        }
       }
+
+      // labels: 5,10,...,60
+      ctx.fillStyle = '#222';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = Math.floor(r * 0.18) + 'px monospace';
+
+      for (var n = 1; n <= 12; n++) {
+        var sec = n * 5;
+        var a2 = (sec / 60) * Math.PI * 2 - Math.PI / 2;
+        var rr = r * 0.68;
+        ctx.fillText(String(sec), cx + Math.cos(a2) * rr, cy + Math.sin(a2) * rr);
+      }
+
+      // center dot
+      ctx.fillStyle = '#00d4e5';
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * 0.05, 0, Math.PI * 2);
+      ctx.fill();
     }
 
-    // labels
-    sCtx.fillStyle = '#222';
-    sCtx.font = Math.floor(r * 0.20) + 'px monospace';
-    sCtx.textAlign = 'center';
-    sCtx.textBaseline = 'middle';
-
-    for (var j = 1; j <= 12; j++) {
-      var sec = j * 5;
-      var a2 = (sec / 60) * Math.PI * 2 - Math.PI / 2;
-      var labelR = r * 0.74;
-      sCtx.fillText(String(sec), cx + Math.cos(a2) * labelR, cy + Math.sin(a2) * labelR);
+    function loop() {
+      // redraw face occasionally in case layout changes (cheap + robust)
+      drawFace();
+      requestAnimationFrame(loop);
     }
-    return true;
-  }
 
-  // Throttle to ~30fps
-  var lastFrame = 0;
-  var FRAME_INTERVAL = 1000 / 30;
+    window.addEventListener('resize', function () { resize(true); });
 
-  function draw(ts) {
-    requestAnimationFrame(draw);
+    // Embedded browsers often need delayed resize calls
+    setTimeout(function () { resize(true); }, 0);
+    setTimeout(function () { resize(true); }, 200);
+    setTimeout(function () { resize(true); }, 1000);
 
-    // Ensure we have a valid layout; rebuild if needed
-    if (!cw || !ch) buildStatic(true);
-
-    if (ts - lastFrame < FRAME_INTERVAL) return;
-    lastFrame = ts;
-
-    // If size changed (flex layout can change without window resize), rebuild
-    buildStatic(false);
-
-    // Clear dynamic layer in CSS pixels
-    dCtx.clearRect(0, 0, cw, ch);
-
-    // Hands (only if geometry exists)
-    if (r > 0) {
-      var now = new Date();
-      var seconds = (now.getTime() / 1000) % 60;
-      var base = (seconds / 60) * Math.PI * 2 - Math.PI / 2;
-
-      var handLen = r * 0.90;
-      var baseW = r * 0.045;
-      var tipW = r * 0.02;
-
-      drawHand(dCtx, cx, cy, base, handLen, baseW, tipW, '#E53935');
-      drawHand(dCtx, cx, cy, base + Math.PI / 2, handLen, baseW, tipW, '#43A047');
-      drawHand(dCtx, cx, cy, base + Math.PI, handLen, baseW, tipW, '#1E88E5');
-      drawHand(dCtx, cx, cy, base + 3 * Math.PI / 2, handLen, baseW, tipW, '#E6D030');
-
-      dCtx.fillStyle = '#00d4e5';
-      dCtx.beginPath();
-      dCtx.arc(cx, cy, r * 0.06, 0, Math.PI * 2);
-      dCtx.fill();
-
-      // Digital clock
-      var hours24 = now.getHours();
-      var ampm = hours24 >= 12 ? 'PM' : 'AM';
-      var hh = hours24 % 12; if (hh === 0) hh = 12;
-
-      timeDisplay.textContent = hh + ':' + pad2(now.getMinutes()) + ':' + pad2(now.getSeconds());
-      ampmDisplay.textContent = ampm;
-    }
-  }
-
-  // Kick builds a few times after load (Viplex needs this)
-  function kick() {
-    buildStatic(true);
-    setTimeout(function () { buildStatic(true); }, 0);
-    setTimeout(function () { buildStatic(true); }, 200);
-    setTimeout(function () { buildStatic(true); }, 1000);
-  }
-
-  window.addEventListener('resize', function () { buildStatic(true); });
-
-  // Also poll every second in case flex/layout changes without resize events
-  setInterval(function () { buildStatic(false); }, 1000);
-
-  // Start
-  kick();
-  requestAnimationFrame(draw);
-})();
-</script>
+    requestAnimationFrame(loop);
+  })();
+  </script>
 </body>
-
 </html>

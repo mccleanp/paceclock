@@ -31,7 +31,7 @@ html, body {
   font-family:monospace;
   font-weight:bold;
   color:#00d4e5;
-  font-size:16vh;   /* doubled size */
+  font-size:13vh; /* ~80% of previous */
 }
 </style>
 </head>
@@ -39,7 +39,7 @@ html, body {
 <body>
 
 <canvas id="c"></canvas>
-<div id="digital">00:00:00</div>
+<div id="digital"></div>
 
 <script>
 (function(){
@@ -89,14 +89,18 @@ function drawHand(cx,cy,angle,len,width,color){
   ctx.stroke();
 }
 
-function drawFace(){
+function pad(n){
+  return (n<10?'0':'')+n;
+}
+
+function draw(now){
 
   if(!resize(false)) return;
 
   var w=cssW;
   var h=cssH;
 
-  var digitalSpace=h*0.30;   /* more space for larger clock */
+  var digitalSpace=h*0.28;
 
   var r=Math.min(w,h-digitalSpace)*0.45;
 
@@ -168,13 +172,12 @@ function drawFace(){
     );
   }
 
-  var now=new Date();
   var seconds=(now.getTime()/1000)%60;
 
   var base=(seconds/60)*Math.PI*2-Math.PI/2;
 
   var handLen=r*0.92;
-  var width=r*0.055;   /* thicker hands */
+  var width=r*0.055;
 
   drawHand(cx,cy,base,handLen,width,'#E53935');
   drawHand(cx,cy,base+Math.PI/2,handLen,width,'#43A047');
@@ -185,24 +188,26 @@ function drawFace(){
   ctx.beginPath();
   ctx.arc(cx,cy,r*0.05,0,Math.PI*2);
   ctx.fill();
-}
 
-function pad(n){
-  return (n<10?'0':'')+n;
-}
+  /* digital clock */
 
-function updateDigital(){
+  var hours=now.getHours();
+  var minutes=now.getMinutes();
+  var secs=now.getSeconds();
 
-  var d=new Date();
+  var ampm=hours>=12?"PM":"AM";
+  hours=hours%12;
+  if(hours===0) hours=12;
 
   digital.textContent=
-    pad(d.getHours())+":"+
-    pad(d.getMinutes())+":"+
-    pad(d.getSeconds());
+    hours+":"+pad(minutes)+":"+pad(secs)+" "+ampm;
 }
 
 function loop(){
-  drawFace();
+
+  var now=new Date();
+  draw(now);
+
   requestAnimationFrame(loop);
 }
 
@@ -211,9 +216,6 @@ window.addEventListener('resize',function(){resize(true);});
 setTimeout(function(){resize(true);},0);
 setTimeout(function(){resize(true);},200);
 setTimeout(function(){resize(true);},1000);
-
-setInterval(updateDigital,1000);
-updateDigital();
 
 requestAnimationFrame(loop);
 

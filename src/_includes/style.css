@@ -27,20 +27,30 @@ body {
 
 #digital {
   position: absolute;
-  bottom: 2vh;
+  bottom: 4.5vh;
   width: 100%;
   text-align: center;
   font-family: monospace;
-  font-weight: bold;
   color: #c0c8d0;
   font-size: 13vh;
+}
+
+#date {
+  position: absolute;
+  bottom: 1vh;
+  width: 100%;
+  text-align: center;
+  font-family: monospace;
+  color: #c0c8d0;
+  font-size: 4vh;
 }
 
 /* Logo styling */
 #club-logo,
 #council-logo {
   position: absolute;
-  top: 2%;
+  top: 10vh;
+  transform: translateY(-50%);
   height: 15vh;
   /* Fixed height for static layout */
   z-index: 10;

@@ -31,7 +31,7 @@ html, body {
   font-family:monospace;
   font-weight:bold;
   color:#00d4e5;
-  font-size:8vh;
+  font-size:16vh;   /* doubled size */
 }
 </style>
 </head>
@@ -96,7 +96,7 @@ function drawFace(){
   var w=cssW;
   var h=cssH;
 
-  var digitalSpace=h*0.18;
+  var digitalSpace=h*0.30;   /* more space for larger clock */
 
   var r=Math.min(w,h-digitalSpace)*0.45;
 
@@ -174,7 +174,7 @@ function drawFace(){
   var base=(seconds/60)*Math.PI*2-Math.PI/2;
 
   var handLen=r*0.92;
-  var width=r*0.03;
+  var width=r*0.055;   /* thicker hands */
 
   drawHand(cx,cy,base,handLen,width,'#E53935');
   drawHand(cx,cy,base+Math.PI/2,handLen,width,'#43A047');
